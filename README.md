@@ -1,84 +1,92 @@
 # WingetUtility
-<h1>README — Winget App Deployment Scripts</h1>
-This repository contains PowerShell scripts automatically generated to deploy, uninstall, and detect applications using Winget via Microsoft Intune Win32 app deployments.
 
-Each selected Winget application includes:
+PowerShell scripts for deploying, uninstalling, and detecting applications via Winget in Microsoft Intune (Win32 app deployments).
 
-  Install-<AppName>.ps1 — Silent install using Winget
+---
 
-  Uninstall-<AppName>.ps1 — Silent uninstall using Winget
+## What's Included
 
-  Detect-<AppName>.ps1 — Detection script for Intune
+| File | Purpose |
+|------|---------|
+| `Generate-WingetAppScripts.ps1` | Interactive script that searches Winget and generates install/uninstall/detect scripts for any app |
+| `WingetScripts/` | Pre-built, ready-to-upload script sets for common applications |
 
-  <AppName>.intunewin (optional) — Pre-packaged for Intune Win32
+---
 
+## Pre-Built Scripts
 
-<h2>Requirements</h2>
-Windows 10/11 endpoints with:
+Ready-to-use script sets are available in the `WingetScripts/` folder. Each app folder includes an install script, uninstall script, detection script, and Intune setup README.
 
-  winget.exe available (usually via App Installer)
+| App | Folder | Winget ID |
+|-----|--------|-----------|
+| Google Chrome | [`WingetScripts/Google_Chrome/`](WingetScripts/Google_Chrome/) | `Google.Chrome` |
 
-  Internet access to Winget sources
+See the app's `README.md` for step-by-step Intune deployment instructions.
 
-  IntuneWinAppUtil.exe (used to create .intunewin packages)
+---
 
-  Microsoft Endpoint Manager admin permissions
+## Generate Scripts for Any App
 
-<h2>Packaging Overview</h2>
-Each app folder (e.g. Google_Chrome) includes:
+To generate scripts for additional apps interactively:
 
+```powershell
+.\Generate-WingetAppScripts.ps1
+```
 
-<code>Install-Google_Chrome.ps1     # Installs the app via winget
-Uninstall-Google_Chrome.ps1   # Uninstalls the app via winget
-Detect-Google_Chrome.ps1      # Detection for Intune assignment
-Google_Chrome.intunewin       # Optional: Pre-packaged for Intune
-</code>
+You'll be prompted to search for packages, select apps via Out-GridView, and optionally package them as `.intunewin` files. Output lands in `WingetScripts\<AppName>\`.
 
-If .intunewin files were not generated, you can create them manually using:
+---
 
+## Requirements
 
-<code>.\IntuneWinAppUtil.exe -c .\Google_Chrome -s Install-Google_Chrome.ps1 -o .\Google_Chrome
-</code>
+- Windows 10/11 endpoints with `winget.exe` available (via App Installer)
+- Internet access to Winget sources
+- [IntuneWinAppUtil.exe](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases) to create `.intunewin` packages
+- Microsoft Intune admin permissions
 
-<h1>How to Deploy in Intune</h1>
+---
 
-Go to Microsoft Intune Admin Center > Apps > Windows apps
+## Deploying a Script Set in Intune
 
-Click Add > App type: Win32 app
+### 1. Package
 
-Select the .intunewin file (e.g., Google_Chrome.intunewin)
+```cmd
+IntuneWinAppUtil.exe -c ".\WingetScripts\<AppName>" -s "Install-<AppName>.ps1" -o ".\WingetScripts\<AppName>"
+```
 
-Use the following configurations:
+### 2. Create Win32 App
 
-<h2>Install command:</h2>
+1. **Intune admin center** → **Apps** → **All apps** → **+ Add** → **Windows app (Win32)**
+2. Upload the `.intunewin` file
 
+### 3. Program settings
 
-<code>powershell.exe -ExecutionPolicy Bypass -File Install-Google_Chrome.ps1
-</code>
-  
-<h2>Uninstall command:</h2>
+| Field | Value |
+|-------|-------|
+| Install command | `powershell.exe -ExecutionPolicy Bypass -File Install-<AppName>.ps1` |
+| Uninstall command | `powershell.exe -ExecutionPolicy Bypass -File Uninstall-<AppName>.ps1` |
+| Install behavior | **System** |
 
-<code>powershell.exe -ExecutionPolicy Bypass -File Uninstall-Google_Chrome.ps1
-</code>
-  
-<h2>Detection rule:</h2>
-Select Script, then paste contents of Detect-Google_Chrome.ps1
+### 4. Detection rule
 
-Assign to appropriate device or user groups
+- Rule format: **Use a custom detection script**
+- Upload `Detect-<AppName>.ps1`
+- Run as 32-bit: **No** | Enforce signature check: **No**
 
-<h2>Re-Generating Scripts</h2>
-To generate new scripts for additional apps:
+### 5. Assign
 
-<code>.\Generate-WingetAppScripts.ps1</code>
+Assign to device or user groups with the appropriate intent (Required / Available / Uninstall).
 
-You’ll be prompted to search for packages, select apps via Out-GridView, and choose whether to generate .intunewin files.
+---
 
-<h2>Known Limitations</h2>
-Detection relies on winget list—some apps with inconsistent IDs may not register cleanly.
+## Known Limitations
 
-Microsoft Store-hosted apps (MSIX) might not uninstall via Winget --silent.
+- Winget detection (`winget list`) can be inconsistent for some package IDs. Pre-built detection scripts use registry and file-path signals instead.
+- Microsoft Store-sourced MSIX packages may not uninstall cleanly with `--silent`.
+- Ensure `winget.exe` is present on target devices, or deploy App Installer as a dependency first.
 
-Ensure winget.exe is present on target devices or deploy it as a dependency.
+---
 
-<h2>License</h2>
-This repository is licensed under MIT. You are free to adapt, extend, and use these templates in enterprise or consulting environments.
+## License
+
+MIT — free to adapt, extend, and use in enterprise or consulting environments.
